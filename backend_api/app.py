@@ -1,7 +1,12 @@
 from flask import Flask, jsonify, request, Response
+from werkzeug.utils import secure_filename
+from flask_cors import CORS
 import json
+import os
 
 app = Flask(__name__)
+CORS(app)
+
 
 # Routes
 PRODUCTS_DIR = 'db/products'
@@ -11,49 +16,48 @@ SERVICES_TYPE_DIR = 'db/service_type'
 SERVICES_ORDER_DIR = 'db/service_order'
 
 
-@app.route('/products', methods=["POST"])
+app.config['ALLOWED_EXTENSIONS'] = {'jpg', 'jpeg', 'png'}
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower(
+           ) in app.config['ALLOWED_EXTENSIONS']
+
+
+@app.route('/products', methods=['POST'])
 def create_products():
-    # Recebe o dicionário enviado na request
-    product_data = json.load(request.files['data'])
+    data_str = request.form.get('data')
+    data = json.loads(data_str)
+    images = request.files.getlist('images')
 
     try:
-        # Carrega os dados do arquivo json
+        # Json existe?
         with open(f'{PRODUCTS_DIR}/products.json', 'r') as f:
             products = json.load(f)
-
     except FileNotFoundError:
-        # Cria um novo arquivo json vazio
+        # Se json não existir, cria json
         open(f'{PRODUCTS_DIR}/products.json', 'w').close()
         products = []
 
-    # Bloqueia Duplicatas
-    if product_data in products:
-        msg = jsonify(
-            {'message': 'Produto existente, não criado!',
-             'status': 409})
+    if data in products:
+        response = jsonify({"message": "Produto já existente!", "status": 409})
+        response.status_code = 409
 
-        msg.status_code = 409
-
-    # Adiciona o novo produto a lista de produtos
     else:
-        product_images = request.files.getlist('images')
-        products.append(product_data)
+        products.append(data)
 
-        # Salvando o dicionário em um arquivo json
         with open(f'{PRODUCTS_DIR}/products.json', 'w') as f:
             json.dump(products, f)
 
-        # Salvando imagens em um diretório
-        for image in product_images:
-            image.save(f'{PRODUCTS_DIR}/images/{image.filename}')
+        for image in images:
+            image.save(
+                f'{PRODUCTS_DIR}/images/{secure_filename(image.filename)}')
 
-        msg = jsonify({'message': 'Produto criado!',
-                       'status': 201})
+        response = jsonify({"message": "Produto criado!", "status": 201})
+        response.status_code = 201
 
-        msg.status = 201
-
-    msg.headers.add('Content-Type', 'application/json')
-    return msg
+    return response
 
 
 @app.route('/clients', methods=['POST'])

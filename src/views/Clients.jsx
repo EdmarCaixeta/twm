@@ -23,8 +23,13 @@ class Client extends React.Component {
                 'Content-Type': 'application/json'
             }
         })
-            .then(res => console.log(res))
+            .then((res) => {
+                console.log(res);
+                event.target.reset();
+                alert('Cliente criado!')
+            })
             .catch(err => console.log(err))
+
     }
 
     render() {

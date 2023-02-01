@@ -24,6 +24,30 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower(
            ) in app.config['ALLOWED_EXTENSIONS']
 
+def generic_get(fpath):
+    with open(fpath) as json_file:
+        data = json.load(json_file)
+    return jsonify(data)
+
+@app.route('/products', methods=['GET'])
+def get_products():
+    return generic_get(f'{PRODUCTS_DIR}/products.json')
+
+@app.route('/clients', methods=['GET'])
+def get_clients():
+    return generic_get(f'{CLIENTS_DIR}/clients.json')
+
+@app.route('/tecnicians', methods=['GET'])
+def get_tecnicians():
+    return generic_get(f'{TECNICIANS_DIR}/tecnicians.json')
+
+@app.route('/service-type', methods=['GET'])
+def get_service_type():
+    return generic_get(f'{SERVICES_TYPE_DIR}/service-type.json')
+
+@app.route('/service-order', methods=['GET'])
+def get_service_order():
+    return generic_get(f'{SERVICES_ORDER_DIR}/service_orders.json')
 
 @app.route('/products', methods=['POST'])
 def create_products():
@@ -52,7 +76,7 @@ def create_products():
 
         for image in images:
             image.save(
-                f'{PRODUCTS_DIR}/images/{secure_filename(image.filename)}')
+                secure_filename(f'{PRODUCTS_DIR}/images/{image.filename}'))
 
         response = jsonify({"message": "Produto criado!", "status": 201})
         response.status_code = 201
@@ -147,12 +171,12 @@ def create_services_types():
 
     try:
         # Carrega os dados do arquivo json
-        with open(f'{SERVICES_TYPE_DIR}/services.json', 'r') as f:
+        with open(f'{SERVICES_TYPE_DIR}/service-type.json', 'r') as f:
             services = json.load(f)
 
     except FileNotFoundError:
         # Cria um novo arquivo json vazio
-        open(f'{SERVICES_TYPE_DIR}/services.json', 'w').close()
+        open(f'{SERVICES_TYPE_DIR}/service-type.json', 'w').close()
         services = []
 
     # Bloqueia Duplicatas
@@ -168,7 +192,7 @@ def create_services_types():
         services.append(new_service)
 
         # Salvando o dicionário em um arquivo json
-        with open(f'{SERVICES_TYPE_DIR}/services.json', 'w') as f:
+        with open(f'{SERVICES_TYPE_DIR}/service-type.json', 'w') as f:
             json.dump(services, f)
 
         msg = jsonify({'message': 'Serviço criado!',
@@ -183,7 +207,10 @@ def create_services_types():
 @app.route('/service-order', methods=['POST'])
 def create_service_order():
     # Recebe o dicionário enviado na request
-    new_service_order = json.load(request.files['data'])
+    data_str = request.form.get('data')
+    data = json.loads(data_str)
+    images = request.files.getlist('images')
+    report = request.files.getlist('laudo')
 
     try:
         # Carrega os dados do arquivo json
@@ -196,7 +223,7 @@ def create_service_order():
         service_orders = []
 
     # Bloqueia Duplicatas
-    if new_service_order in service_orders:
+    if data in service_orders:
         msg = jsonify(
             {'message': 'Ordem de serviço existente, não criado!',
              'status': 409})
@@ -205,20 +232,18 @@ def create_service_order():
 
     # Adiciona o novo produto a lista de produtos
     else:
-        service_imgs = request.files.getlist('images')
-        service_report = request.files.getlist('report')
-        service_orders.append(new_service_order)
+        service_orders.append(data)
 
         # Salvando o dicionário em um arquivo json
         with open(f'{SERVICES_ORDER_DIR}/service_orders.json', 'w') as f:
             json.dump(service_orders, f)
 
         # Salvando imagens em um diretório
-        for image in service_imgs:
-            image.save(f'{SERVICES_ORDER_DIR}/images/{image.filename}')
+        for image in images:
+            image.save(secure_filename(f'{SERVICES_ORDER_DIR}/images/{image.filename}'))
 
-        for report in service_report:
-            report.save(f'{SERVICES_ORDER_DIR}/reports/{report.filename}')
+        for laudo in report:
+            laudo.save(secure_filename(f'{SERVICES_ORDER_DIR}/reports/{laudo.filename}'))
 
         msg = jsonify({'message': 'Produto criado!',
                        'status': 201})

@@ -23,8 +23,13 @@ class Products extends React.Component {
         }
 
         axios.post('http://localhost:5000/products', data)
-            .then(res => console.log(res))
+            .then((res) => {
+                console.log(res); alert('Produto criado!')
+                event.target.reset()
+            })
             .catch(err => console.log(err))
+
+
 
     }
 
